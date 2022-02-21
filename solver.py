@@ -27,7 +27,7 @@ def get_secret_vec(puzzle_number):
     data = json.loads(response.text)
     return data['vec']
 
-def make_guess(guess, puzzle_number):
+def make_guess(guess, puzzle_number, secret_vec):
     model_url = "https://semantle.novalis.org/model2/{}/{}".format(decode(get_secret(puzzle_number)), guess)
     try:
         response = requests.get(model_url)
@@ -37,7 +37,7 @@ def make_guess(guess, puzzle_number):
         return -100, -1, guess
 
     guess_vec = data['vec']
-    secret_vec = get_secret_vec(puzzle_number)
+    
     score = cos_sim(guess_vec, secret_vec) * 100.0
     perc = -1 # for cold guesses
     if 'percentile' in data.keys():
@@ -68,6 +68,12 @@ def solve(model, puzzle_number, tries=150, seed_words=[]):
     guesses_log = []
     visited = set()
 
+    try:
+        secret_vec = get_secret_vec(puzzle_number)
+    except:
+        print("Failed to get the secret word for this puzzle number, quitting")
+        return
+        
     if not seed_words:
         # 10 initial guesses from common English words
         seed_words = [random.choice(WORDS) for i in range(10)]
@@ -75,7 +81,7 @@ def solve(model, puzzle_number, tries=150, seed_words=[]):
     for random_word in seed_words:
         if random_word not in visited:
             visited.add(random_word)
-            result = make_guess(random_word, puzzle_number)
+            result = make_guess(random_word, puzzle_number, secret_vec)
             guesses_log.append(result)
             if(result[1] == 1000):
                 print_win(guesses_log)
@@ -120,7 +126,7 @@ def solve(model, puzzle_number, tries=150, seed_words=[]):
                     random_nbrs.append(pick)
 
         for nbr in random_nbrs:
-            result = make_guess(nbr, puzzle_number)
+            result = make_guess(nbr, puzzle_number, secret_vec)
             guesses_log.append(result)
             if(result[1] == 1000):
                 print_win(guesses_log)
